@@ -3,6 +3,8 @@
 import re
 import os
 import json
+import shutil
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -200,17 +202,23 @@ if __name__ == "__main__":
     file_path = 'filmes.json'
 
     if os.path.exists(file_path):
-        key = input('DIGITE AQUI UMA CHAVE A QUAL DESEJA ALTERAR O VALOR: ')  # UMA CHAVE DE EXEMPLO É "stream"
-        value_before = input('DIGITE O VALOR OBSOLETO: ')  # UM VALOR OBSOLETO DE EXEMPLO PARA A CHAVE "stream" É "lara1.azureedge"
-        value_after = input('DIGITE AQUI O VALOR ATUALIZADO: ')  # UM VALOR ATUAL DE EXEMPLO PARA A CHAVE "stream" É "d1ws1c7jw1ise5.cloudfront"
-        with open(file_path) as json_file:
-            data = json.load(json_file)
-        for result in data:
-            for k, v in result.items():
-                if k == key and result[k]:
-                    result[k] = v.replace(value_before, value_after)
-                    print(result[k])
-        extract.create_json(data)
+        action = input('VOCÊ JÁ TEM UM ARQUIVO GERADO,SE DESEJA ATUALIZAR ALGUM CAMPO DIGITE S OU DIGITE N PARA GERAR UM NOVO: ')
+        if 's' in action or 'S' in action:
+            key = input('DIGITE AQUI UMA CHAVE A QUAL DESEJA ALTERAR O VALOR: ')  # UMA CHAVE DE EXEMPLO É "stream"
+            value_before = input('DIGITE O VALOR OBSOLETO: ')  # UM VALOR OBSOLETO DE EXEMPLO PARA A CHAVE "stream" É "lara1.azureedge"
+            value_after = input('DIGITE AQUI O VALOR ATUALIZADO: ')  # UM VALOR ATUAL DE EXEMPLO PARA A CHAVE "stream" É "d1ws1c7jw1ise5.cloudfront"
+            with open(file_path) as json_file:
+                data = json.load(json_file)
+            for result in data:
+                for k, v in result.items():
+                    if k == key and result[k]:
+                        result[k] = v.replace(value_before, value_after)
+                        print(result[k])
+            extract.create_json(data)
+        else:
+            copy_file = shutil.copyfile(file_path, 'copy_' + file_path)
+            extract.set_proxies()
+            list_extracted = extract.start(1, 2, referer='https://dietafitness.fun/')
     else:
         extract.set_proxies()
         list_extracted = extract.start(1, 855, referer='https://dietafitness.fun/')
