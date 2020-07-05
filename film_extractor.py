@@ -190,6 +190,7 @@ class Extractor(Browser):
             html = self.open(url_player, self.referer)
             soup = BeautifulSoup(html, 'html.parser')
             url_stream = soup.find('div', {'id': 'instructions'}).source['src'].replace('\n', '').split('?')[0]
+            print(url_stream)
         except:
             url_player = None
             url_stream = None
