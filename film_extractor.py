@@ -8,7 +8,7 @@ import shutil
 import requests
 from bs4 import BeautifulSoup
 
-URL_SERVER = 'https://redecanais.bz'
+URL_SERVER = 'https://redecanais.cloud'
 
 
 class ProxyRequests:
@@ -34,8 +34,9 @@ class Browser:
     def __init__(self):
         self.request = None
         self.response = None
-        self.session = requests.Session()
         self.proxies = None
+        self.referer = None
+        self.session = requests.Session()
 
     def headers(self):
         headers = {
@@ -59,7 +60,7 @@ class Browser:
         else:
             self.proxies = ProxyRequests().proxies
 
-    def open(self, url, referer=None, is_response=False, **kwargs):
+    def send_request(self, method, url, **kwargs):
         if self.proxies:
             if type(self.proxies['http']) == list:
                 for proxy in self.proxies['http']:
@@ -70,29 +71,19 @@ class Browser:
                     if result:
                         break
 
-        if referer:
-            headers = self.headers()
-            headers['referer'] = referer
-        else:
-            headers = self.headers()
-            headers['referer'] = URL_SERVER
-        with self.session as s:
-            if kwargs:
-                payload = kwargs
-                self.response = s.post(url=url, data=payload, proxies=self.proxies, headers=headers).text
-            else:
-                self.request = s.get(url, proxies=self.proxies, headers=headers)
-                self.response = self.request.text
-                if is_response:
-                    return self.request
-        return self.response
+        response = self.session.request(method, url, proxies=self.proxies, **kwargs)
+        if response.status_code == 200:
+            self.referer = url
+            return response.text
+
+        return None
 
 
 class Extractor(Browser):
 
     def __init__(self):
-        self.referer = None
         super().__init__()
+        self.headers = self.headers()
 
     def create_json(self, data, filename=None):
         if filename:
@@ -103,14 +94,12 @@ class Extractor(Browser):
         with open(path, 'w') as file:
             file.write(dumps)
 
-    def start(self, start, stop, referer=None):
-        if referer:
-            self.referer = referer
+    def start(self, start, stop):
         list_extracted = []
         film_id = 0
         for number in range(int(start), int(stop) + 1):
             url = f'{URL_SERVER}/browse-filmes-videos-{number}-date.html'
-            print(url)
+            print(f'EXTRAINDO FILMES DE {url}\nPÁGINA {number}')
             list_films = self.films(url)
             if list_films:
                 for dict_film in list_films:
@@ -123,10 +112,11 @@ class Extractor(Browser):
                 dict_film['id'] = film_id
                 list_extracted.append(dict_film)
             self.create_json(list_extracted)
+        print('EXTRAÇÃO CONCLUÍDA!!!')
         return list_extracted
 
     def films(self, url):
-        html = self.open(url)
+        html = self.send_request('GET', url)
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find('ul', {'class': 'row pm-ul-browse-videos list-unstyled'})
         films_list = []
@@ -145,11 +135,11 @@ class Extractor(Browser):
         except:
             dict_films = {}
             return films_list.append(dict_films)
-            #info_warning = soup.find('div', {'class': 'col-md-12 text-center'}).text
-            #sys.exit()
+            # info_warning = soup.find('div', {'class': 'col-md-12 text-center'}).text
+            # sys.exit()
 
     def get_description(self, url):
-        html = self.open(url)
+        html = self.send_request('GET', url)
         soup = BeautifulSoup(html, 'html.parser')
         player, stream = self.get_player_id(soup)
         try:
@@ -169,32 +159,64 @@ class Extractor(Browser):
     def get_player_id(self, iframe):
         try:
             url_player = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
-            player, stream = self.get_stream(url_player)
+            player, stream = self.get_player(url_player)
         except:
             player = None
             stream = None
         return player, stream
 
-    def get_stream(self, url=None):
+    def get_player(self, url):
         print(url)
-        try:
-            if '&' in url:
-                match = re.compile("vid=(.+?)&gplusid.*?").findall(url)
-                number = ''
-                id = match[0]
-            else:
-                match = re.compile("serverf(.*).*?php.*?vid=(.*)").findall(url)
-                number = match[0][0].replace('.', '')
-                id = match[0][1]
-            url_player = f'https://player.ec.cx/player3/serverf{number}hlb.php?vid={id}'
-            html = self.open(url_player, self.referer)
-            soup = BeautifulSoup(html, 'html.parser')
+        url_player = URL_SERVER + url
+        self.response = self.send_request('GET', url_player, headers=self.headers)
+        if self.response:
+            form = BeautifulSoup(self.response, 'html.parser').find('form')
+            url_action = form['action']
+            value = form.input['value']
+            return url_player, self.decrypt_link(url_action, value)
+
+    def decrypt_link(self, url, value):
+        self.headers["referer"] = self.referer
+        payload = {
+            "data": value
+        }
+        self.response = self.send_request('POST', url, data=payload, headers=self.headers)
+        if self.response:
+            form = BeautifulSoup(self.response, 'html.parser').find('form')
+            url_action = form['action']
+            value = form.input['value']
+            return self.redirect_link(url_action, value)
+
+    def redirect_link(self, url, value):
+        self.headers["referer"] = self.referer
+        payload = {
+            "data": value
+        }
+        self.response = self.send_request('POST', url, data=payload, headers=self.headers)
+        if self.response:
+            form = BeautifulSoup(self.response, 'html.parser').find('form')
+            url_action = form['action']
+            value = form.input['value']
+            return self.get_ads_link(url_action, value)
+
+    def get_ads_link(self, url, value):
+        self.headers["referer"] = self.referer
+        payload = {
+            "data": value
+        }
+        self.response = self.send_request('POST', url, data=payload, headers=self.headers)
+        if self.response:
+            iframe = BeautifulSoup(self.response, 'html.parser').find('iframe')
+            url_action = iframe['src']
+            return self.get_stream(url + url_action.replace('./', '/'), url)
+
+    def get_stream(self, url, referer):
+        self.headers["referer"] = referer
+        self.response = self.send_request('GET', url, headers=self.headers)
+        if self.response:
+            soup = BeautifulSoup(self.response, 'html.parser')
             url_stream = soup.find('div', {'id': 'instructions'}).source['src'].replace('\n', '').split('?')[0]
-            print(url_stream)
-        except:
-            url_player = None
-            url_stream = None
-        return url_player, url_stream
+            return url_stream
 
 
 if __name__ == "__main__":
@@ -219,7 +241,7 @@ if __name__ == "__main__":
         else:
             copy_file = shutil.copyfile(file_path, 'copy_' + file_path)
             extract.set_proxies()
-            list_extracted = extract.start(1, 2, referer='https://dietafitness.fun/')
+            list_extracted = extract.start(1, 855)
     else:
         extract.set_proxies()
-        list_extracted = extract.start(1, 855, referer='https://dietafitness.fun/')
+        list_extracted = extract.start(1, 855)
