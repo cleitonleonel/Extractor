@@ -4,7 +4,6 @@ import re
 import os
 import json
 import shutil
-
 import requests
 from bs4 import BeautifulSoup
 

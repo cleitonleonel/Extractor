@@ -223,7 +223,6 @@ class Extractor(Browser):
 
 if __name__ == "__main__":
     extract = Extractor()
-
     file_path = 'canais.json'
 
     if os.path.exists(file_path):
