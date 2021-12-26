@@ -6,7 +6,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-URL_SERVER = 'https://redecanaistv.com/'
+URL_SERVER = 'https://redecanaistv.net'
 
 
 class ProxyRequests:
@@ -16,7 +16,8 @@ class ProxyRequests:
         self.proxies = self.mount_proxies()
 
     def acquire_sockets(self):
-        response = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=7000&country=BR&anonymity=elite&ssl=yes').text
+        response = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=7000'
+                                '&country=BR&anonymity=elite&ssl=yes').text
         self.sockets = response.split('\n')
 
     def mount_proxies(self):
@@ -47,7 +48,6 @@ class Browser:
             payload = data
             self.response = s.post(url=url, data=payload, proxies=proxies)
             if self.response.status_code == 200:
-                print(proxies)
                 self.proxies = proxies
                 return True
 
@@ -240,8 +240,8 @@ if __name__ == "__main__":
                         print(result[k])
             extract.create_json(data)
         else:
-            extract.set_proxies()
+            # extract.set_proxies()
             list_extracted = extract.start(1, 2)
     else:
-        extract.set_proxies()
+        # extract.set_proxies()
         list_extracted = extract.start(1, 2)

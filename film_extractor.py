@@ -7,7 +7,7 @@ import shutil
 import requests
 from bs4 import BeautifulSoup
 
-URL_SERVER = 'https://redecanais.cloud'
+URL_SERVER = 'https://redecanais.wf'
 
 
 class ProxyRequests:
@@ -17,7 +17,8 @@ class ProxyRequests:
         self.proxies = self.mount_proxies()
 
     def acquire_sockets(self):
-        response = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=7000&country=BR&anonymity=elite&ssl=yes').text
+        response = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=7000'
+                                '&country=BR&anonymity=elite&ssl=yes').text
         self.sockets = response.split('\n')
 
     def mount_proxies(self):
@@ -128,7 +129,14 @@ class Extractor(Browser):
                 else:
                     img = result.img['data-echo']
                 result_dict = self.get_description(URL_SERVER + result['href'])
-                dict_films = {'title': result.img['alt'], 'url': URL_SERVER + result['href'], 'img': img, 'description': result_dict['desc'], 'player': result_dict['player'], 'stream': result_dict['stream']}
+                dict_films = {
+                    'title': result.img['alt'],
+                    'url': URL_SERVER + result['href'],
+                    'img': img,
+                    'description': result_dict['desc'],
+                    'player': result_dict['player'],
+                    'stream': result_dict['stream']
+                }
                 films_list.append(dict_films)
             return films_list
         except:
@@ -214,7 +222,8 @@ class Extractor(Browser):
         self.response = self.send_request('GET', url, headers=self.headers)
         if self.response:
             soup = BeautifulSoup(self.response, 'html.parser')
-            url_stream = soup.find('div', {'id': 'instructions'}).source['src'].replace('\n', '').split('?')[0]
+            url_m3u = soup.find('div', {'id': 'instructions'}).source['src'].replace('\n', '').replace('./', '/')
+            url_stream = soup.find('div', {'id': 'instructions'}).video['baixar']
             return url_stream
 
 
@@ -224,11 +233,14 @@ if __name__ == "__main__":
     file_path = 'filmes.json'
 
     if os.path.exists(file_path):
-        action = input('VOCÊ JÁ TEM UM ARQUIVO GERADO,SE DESEJA ATUALIZAR ALGUM CAMPO DIGITE S OU DIGITE N PARA GERAR UM NOVO: ')
+        action = input('VOCÊ JÁ TEM UM ARQUIVO GERADO,SE DESEJA ATUALIZAR ALGUM CAMPO DIGITE S OU DIGITE N PARA GERAR '
+                       'UM NOVO: ')
         if 's' in action or 'S' in action:
             key = input('DIGITE AQUI UMA CHAVE A QUAL DESEJA ALTERAR O VALOR: ')  # UMA CHAVE DE EXEMPLO É "stream"
-            value_before = input('DIGITE O VALOR OBSOLETO: ')  # UM VALOR OBSOLETO DE EXEMPLO PARA A CHAVE "stream" É "lara1.azureedge"
-            value_after = input('DIGITE AQUI O VALOR ATUALIZADO: ')  # UM VALOR ATUAL DE EXEMPLO PARA A CHAVE "stream" É "d1ws1c7jw1ise5.cloudfront"
+            value_before = input(
+                'DIGITE O VALOR OBSOLETO: ')  # UM VALOR OBSOLETO DE EXEMPLO PARA A CHAVE "stream" É "lara1.azureedge"
+            value_after = input(
+                'DIGITE AQUI O VALOR ATUALIZADO: ')  # UM VALOR ATUAL DE EXEMPLO PARA A CHAVE "stream" É "d1ws1c7jw1ise5.cloudfront"
             with open(file_path) as json_file:
                 data = json.load(json_file)
             for result in data:
@@ -239,8 +251,8 @@ if __name__ == "__main__":
             extract.create_json(data)
         else:
             copy_file = shutil.copyfile(file_path, 'copy_' + file_path)
-            extract.set_proxies()
+            # extract.set_proxies()
             list_extracted = extract.start(1, 855)
     else:
-        extract.set_proxies()
+        # extract.set_proxies()
         list_extracted = extract.start(1, 855)

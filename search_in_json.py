@@ -25,4 +25,5 @@ with open(file_path) as json_file:
                 list_films.append(item)
         except:
             pass
+
 print(list_films)
