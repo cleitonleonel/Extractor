@@ -74,6 +74,7 @@ class Extractor(Browser):
     def __init__(self):
         super().__init__()
         self.headers = self.headers()
+        self.download_url = None
 
     def create_json(self, data, filename=None):
         if filename:
@@ -217,10 +218,22 @@ class Extractor(Browser):
         if self.response:
             soup = BeautifulSoup(self.response.text, 'html.parser')
             url_m3u = soup.find('div', {'id': 'instructions'}).source['src'].replace('\n', '').replace('./', '/')
-            url_stream = soup.find('div', {'id': 'instructions'}).video['baixar']
-            if not url_stream:
+            self.download_url = soup.find('div', {'id': 'instructions'}).video['baixar']
+            if not self.download_url:
                 self.get_stream(url, referer)
+            else:
+                url_stream = self.get_url_download_video()
         return url_stream
+
+    def get_url_download_video(self):
+        link_download = None
+        try:
+            self.response = self.send_request('GET', self.download_url, headers=self.headers)
+            link_download = re.compile(r'<meta .*?0; URL=(.*?)"/>').findall(self.response.text.replace(" />", "/>")
+                                                                            )[0].replace("'", "")
+        except:
+            self.get_url_download_video()
+        return link_download
 
 
 if __name__ == "__main__":
